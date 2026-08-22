@@ -11,3 +11,5 @@ services:
         value: https://arjun939201.github.io
       - key: SANDBOX_EXECUTION_ENABLED
         value: "false"
+      - key: PYTHON_VERSION
+        value: "3.12.8"
