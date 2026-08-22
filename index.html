@@ -3,87 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="A browser-based Python code runner powered by Pyodide." />
-  <title>Python Runner</title>
+  <meta name="description" content="A professional browser-based Python IDE powered by Pyodide." />
+  <meta name="theme-color" content="#0b0d12" />
+  <meta property="og:title" content="Python Web IDE" />
+  <meta property="og:description" content="Write and run Python directly in your browser." />
+  <title>Python Web IDE</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%230b0d12%22/><text x=%2232%22 y=%2243%22 text-anchor=%22middle%22 font-size=%2230%22 font-family=%22Arial%22 fill=%22%23fff%22>Py</text></svg>" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo">Py</div>
-      <div>
-        <h1>Python Runner</h1>
-        <span>Run Python directly in your browser</span>
-      </div>
-    </div>
-    <div class="status-wrap">
-      <span id="runtimeStatus" class="status loading"><span class="dot"></span>Loading Python…</span>
-      <button id="themeBtn" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">☾</button>
-    </div>
-  </header>
-
-  <main class="app-shell">
-    <section class="toolbar">
-      <div class="toolbar-left">
-        <button id="runBtn" class="run-btn" disabled>▶ Run</button>
-        <button id="stopBtn" class="secondary-btn" disabled>■ Stop</button>
-        <button id="clearBtn" class="secondary-btn">Clear output</button>
-      </div>
-      <div class="toolbar-right">
-        <select id="exampleSelect" aria-label="Load example">
-          <option value="">Examples…</option>
-          <option value="hello">Hello world</option>
-          <option value="loops">Loops</option>
-          <option value="data">Data analysis</option>
-          <option value="error">Error demo</option>
-        </select>
-      </div>
-    </section>
-
-    <section class="workspace">
-      <div class="panel editor-panel">
-        <div class="panel-header">
-          <span>main.py</span>
-          <span id="charCount">0 chars</span>
-        </div>
-        <textarea id="code" spellcheck="false" aria-label="Python code">print("Hello from Python Runner!")
-
-for i in range(5):
-    print(f"Count: {i}")</textarea>
-        <div class="editor-footer">
-          <span>Python 3 · Pyodide</span>
-          <span>Ctrl/⌘ + Enter to run</span>
-        </div>
-      </div>
-
-      <div class="panel output-panel">
-        <div class="panel-header">
-          <span>Output</span>
-          <span id="executionTime"></span>
-        </div>
-        <pre id="output" class="output" aria-live="polite">Python runtime is loading…</pre>
-      </div>
-    </section>
-
-    <section class="info-grid">
-      <article>
-        <strong>🔒 Browser sandbox</strong>
-        <p>Your code runs locally in the browser through Pyodide. It is not sent to a server.</p>
-      </article>
-      <article>
-        <strong>⚡ No backend required</strong>
-        <p>Deploy this site to GitHub Pages, Cloudflare Pages, Netlify, or any static host.</p>
-      </article>
-      <article>
-        <strong>📦 Python packages</strong>
-        <p>Pyodide includes many scientific and data packages that can run in WebAssembly.</p>
-      </article>
-    </section>
-  </main>
-
-  <footer>Python Runner · Open source browser Python playground</footer>
-
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
-  <script src="app.js"></script>
+  <div id="app">
+    <header class="appbar">
+      <div class="brand-area"><button class="brand" id="brandBtn" aria-label="Open command palette"><span class="brand-mark">Py</span><span class="brand-name">Python Web</span></button><span class="crumb">/ <span id="projectName">Untitled Project</span></span></div>
+      <nav class="menubar" aria-label="Application menu"><button data-menu="file">File</button><button data-menu="edit">Edit</button><button data-menu="view">View</button><button data-menu="run">Run</button><button data-menu="help">Help</button></nav>
+      <div class="app-actions"><span id="runtimeStatus" class="runtime-status loading"><i></i>Preparing Python</span><button id="themeBtn" class="toolbar-icon" aria-label="Change theme" title="Change theme">◐</button><button id="settingsBtn" class="toolbar-icon" aria-label="Settings" title="Settings">⚙</button></div>
+    </header>
+    <div id="contextMenu" class="context-menu" hidden></div>
+    <main class="ide">
+      <aside id="explorer" class="sidebar"><div class="sidebar-head"><span>EXPLORER</span><div><button id="newFileBtn" title="New file">＋</button><button id="newFolderBtn" title="New folder">▱</button><button id="projectMenuBtn" title="Project actions">•••</button></div></div><div class="project-title"><span class="chevron">⌄</span><strong>PROJECT</strong></div><div id="fileTree" class="file-tree" role="tree"></div><div class="sidebar-bottom"><button id="importBtn">⇧ <span>Import</span></button><button id="exportBtn">⇩ <span>Export</span></button></div></aside>
+      <section class="main-stage"><div id="tabs" class="tabs" role="tablist"></div><div class="editor-wrap"><div id="editor" aria-label="Python code editor"></div><div id="editorFallback" hidden><textarea id="fallbackCode" spellcheck="false"></textarea></div></div><div class="statusbar"><span id="gitStatus">● Local</span><span id="pythonVersion">Python —</span><span>UTF-8</span><span id="cursorPos">Ln 1, Col 1</span><span id="saveStatus">Saved</span><span class="status-spacer"></span><span>Spaces: 4</span><span id="selectionStatus"></span></div></section>
+      <section id="outputPanel" class="bottom-panel"><div class="panel-tabs"><div class="panel-tab active" data-panel="output">OUTPUT</div><div class="panel-tab" data-panel="problems">PROBLEMS</div><div class="panel-tab" data-panel="terminal">TERMINAL</div><div class="panel-spacer"></div><span id="execMeta" class="exec-meta"></span><button id="copyOutputBtn" title="Copy output">⧉</button><button id="clearOutputBtn" title="Clear output">⌫</button><button id="closeOutputBtn" title="Hide panel">⌄</button></div><div id="outputContent" class="output-content"><div class="output-empty"><div class="output-icon">›_</div><strong>Ready when you are.</strong><span>Run your Python program to see output here.</span></div></div><div id="inputBar" class="input-bar" hidden><span>stdin</span><input id="stdinInput" placeholder="Enter input and press Enter…" autocomplete="off" /></div></section>
+    </main>
+    <div class="runbar"><button id="runBtn" class="primary-run" disabled><span class="play">▶</span> Run <kbd>⌘↵</kbd></button><button id="stopBtn" class="stop-btn" disabled>■ Stop</button><button id="examplesBtn" class="subtle-btn">Examples</button><span class="runbar-spacer"></span><span class="privacy"><span>●</span> Runs locally in your browser</span></div>
+  </div>
+  <div id="commandPalette" class="modal-backdrop" hidden><div class="command-palette" role="dialog" aria-modal="true" aria-label="Command palette"><div class="palette-search"><span>⌕</span><input id="commandSearch" placeholder="Type a command…" autocomplete="off" /></div><div id="commandList"></div><div class="palette-hint"><span>↑↓ Navigate</span><span>↵ Run</span><span>Esc Close</span></div></div></div>
+  <div id="settingsModal" class="modal-backdrop" hidden><div class="dialog" role="dialog" aria-modal="true"><div class="dialog-head"><h2>Settings</h2><button class="close-dialog">×</button></div><div class="settings-grid"><label>Theme<select id="themeSelect"><option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option></select></label><label>Font size<input id="fontSize" type="number" min="12" max="24" step="1" /></label><label>Word wrap<select id="wrapSelect"><option value="off">Off</option><option value="on">On</option></select></label><label>Minimap<select id="minimapSelect"><option value="on">On</option><option value="off">Off</option></select></label><label>Autosave<select id="autosaveSelect"><option value="on">On</option><option value="off">Off</option></select></label><label>Output auto-scroll<select id="scrollSelect"><option value="on">On</option><option value="off">Off</option></select></label></div><p class="settings-note">Settings and projects are stored locally on this device. Cloud accounts are not enabled yet.</p></div></div>
+  <div id="examplesModal" class="modal-backdrop" hidden><div class="dialog examples-dialog" role="dialog" aria-modal="true"><div class="dialog-head"><h2>Examples</h2><button class="close-dialog">×</button></div><div id="exampleGrid" class="example-grid"></div></div></div>
+  <div id="toastRegion" class="toast-region" aria-live="polite"></div><input id="fileInput" type="file" accept=".py,.txt,.zip" hidden />
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs/loader.min.js"></script><script src="app.js"></script>
 </body>
 </html>
