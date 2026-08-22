@@ -1,166 +1,28 @@
-const codeEl = document.getElementById('code');
-const outputEl = document.getElementById('output');
-const runBtn = document.getElementById('runBtn');
-const stopBtn = document.getElementById('stopBtn');
-const clearBtn = document.getElementById('clearBtn');
-const statusEl = document.getElementById('runtimeStatus');
-const timeEl = document.getElementById('executionTime');
-const countEl = document.getElementById('charCount');
-const exampleEl = document.getElementById('exampleSelect');
-const themeBtn = document.getElementById('themeBtn');
-
-let pyodide = null;
-let running = false;
-let executionToken = 0;
-
-const examples = {
-  hello: `name = "Python Runner"
-print(f"Hello, {name}!")
-print("Python is running in your browser.")`,
-  loops: `total = 0
-for number in range(1, 11):
-    total += number
-    print(f"{number:2} -> running total: {total}")
-
-print("Final total:", total)`,
-  data: `import statistics
-
-values = [12, 18, 7, 21, 14, 10, 25]
-print("Values:", values)
-print("Count:", len(values))
-print("Mean:", statistics.mean(values))
-print("Median:", statistics.median(values))
-print("Min / Max:", min(values), "/", max(values))`,
-  error: `def divide(a, b):
-    return a / b
-
-print(divide(10, 0))`
-};
-
-function setStatus(text, state = 'loading') {
-  statusEl.className = `status ${state}`;
-  statusEl.innerHTML = `<span class="dot"></span>${text}`;
-}
-
-function updateCount() {
-  countEl.textContent = `${codeEl.value.length.toLocaleString()} chars`;
-}
-
-function appendOutput(text) {
-  outputEl.textContent += text;
-  outputEl.scrollTop = outputEl.scrollHeight;
-}
-
-function clearOutput() {
-  outputEl.textContent = '';
-  outputEl.className = 'output';
-  timeEl.textContent = '';
-}
-
-async function initPython() {
-  try {
-    setStatus('Loading Python…', 'loading');
-    pyodide = await loadPyodide();
-    setStatus(`Python ${pyodide.runPython('import sys; sys.version.split()[0]')}`, 'ready');
-    outputEl.textContent = 'Ready. Click Run to execute your Python code.';
-    runBtn.disabled = false;
-  } catch (error) {
-    console.error(error);
-    setStatus('Runtime failed to load', 'error');
-    outputEl.className = 'output error';
-    outputEl.textContent = `Could not load Pyodide.\n\n${error}`;
-  }
-}
-
-async function runCode() {
-  if (!pyodide || running) return;
-  const code = codeEl.value;
-  const token = ++executionToken;
-  running = true;
-  runBtn.disabled = true;
-  stopBtn.disabled = false;
-  clearOutput();
-  appendOutput('Running…\n\n');
-  setStatus('Running', 'loading');
-  const start = performance.now();
-
-  try {
-    pyodide.setStdout({ batched: (msg) => {
-      if (token === executionToken) appendOutput(msg + '\n');
-    }});
-    pyodide.setStderr({ batched: (msg) => {
-      if (token === executionToken) appendOutput(msg + '\n');
-    }});
-
-    await pyodide.runPythonAsync(code);
-    if (token === executionToken) {
-      outputEl.classList.add('success');
-      appendOutput(`\n✓ Finished successfully`);
-      setStatus('Ready', 'ready');
-    }
-  } catch (error) {
-    if (token === executionToken) {
-      outputEl.classList.add('error');
-      appendOutput(`\n✕ ${error}`);
-      setStatus('Execution error', 'error');
-    }
-  } finally {
-    pyodide.setStdout({});
-    pyodide.setStderr({});
-    if (token === executionToken) {
-      timeEl.textContent = `${(performance.now() - start).toFixed(0)} ms`;
-      running = false;
-      runBtn.disabled = false;
-      stopBtn.disabled = true;
-    }
-  }
-}
-
-function stopCode() {
-  if (!running) return;
-  executionToken++;
-  running = false;
-  stopBtn.disabled = true;
-  runBtn.disabled = false;
-  setStatus('Ready', 'ready');
-  appendOutput('\n\n■ Stopped output collection. A running Python operation may finish in the background.');
-}
-
-codeEl.addEventListener('input', updateCount);
-runBtn.addEventListener('click', runCode);
-stopBtn.addEventListener('click', stopCode);
-clearBtn.addEventListener('click', clearOutput);
-
-exampleEl.addEventListener('change', () => {
-  const example = examples[exampleEl.value];
-  if (example !== undefined) {
-    codeEl.value = example;
-    updateCount();
-    clearOutput();
-    outputEl.textContent = 'Example loaded. Click Run to execute it.';
-  }
-  exampleEl.value = '';
-});
-
-themeBtn.addEventListener('click', () => {
-  document.documentElement.classList.toggle('light');
-  themeBtn.textContent = document.documentElement.classList.contains('light') ? '☀' : '☾';
-});
-
-codeEl.addEventListener('keydown', (event) => {
-  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-    event.preventDefault();
-    runCode();
-  }
-  if (event.key === 'Tab') {
-    event.preventDefault();
-    const start = codeEl.selectionStart;
-    const end = codeEl.selectionEnd;
-    codeEl.value = codeEl.value.slice(0, start) + '    ' + codeEl.value.slice(end);
-    codeEl.selectionStart = codeEl.selectionEnd = start + 4;
-    updateCount();
-  }
-});
-
-updateCount();
-initPython();
+const STORAGE_KEY='python-web:project:v2',SETTINGS_KEY='python-web:settings:v1';
+const DEFAULT_CODE=`print("Hello from Python Web!")\n\nfor i in range(5):\n    print(f"Count: {i}")`;
+const examples={hello:{title:'Hello world',description:'A tiny first program.',code:`name="Python Web"\nprint(f"Hello, {name}!")`},data:{title:'Data analysis',description:'Use Python standard library.',code:`import statistics\nvalues=[12,18,7,21,14,10,25]\nprint("Values:",values)\nprint("Mean:",statistics.mean(values))\nprint("Median:",statistics.median(values))`},loops:{title:'Loops',description:'Loops, conditions and totals.',code:`total=0\nfor number in range(1,11):\n    total+=number\n    print(f"{number:2} -> {total}")\nprint("Final total:",total)`},error:{title:'Error handling',description:'See a Python traceback.',code:`def divide(a,b):\n    return a/b\nprint(divide(10,0))`},matplotlib:{title:'Plot',description:'Load matplotlib in Pyodide.',code:`import matplotlib.pyplot as plt\nx=[1,2,3,4]\ny=[1,4,2,5]\nplt.plot(x,y)\nplt.title("Browser Python plot")\nplt.show()`}};
+const $=id=>document.getElementById(id);let pyodide=null,editor=null,running=false,token=0,activeFile='main.py',files={},settings={theme:'system',fontSize:14,wrap:'off',minimap:'on',autosave:'on',scroll:'on'};
+function loadState(){try{files=JSON.parse(localStorage.getItem(STORAGE_KEY))||{}}catch{files={}}if(!files['main.py'])files['main.py']=DEFAULT_CODE;try{settings={...settings,...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')}}catch{}applyTheme()}
+function persist(){localStorage.setItem(STORAGE_KEY,JSON.stringify(files));$('saveStatus').textContent='Saved'}function dirty(){ $('saveStatus').textContent='Unsaved';if(settings.autosave==='on'){clearTimeout(dirty.t);dirty.t=setTimeout(persist,450)}}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}function toast(m,type='success'){const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=m;$('toastRegion').appendChild(e);setTimeout(()=>e.remove(),2600)}
+function applyTheme(){const light=settings.theme==='light'||(settings.theme==='system'&&matchMedia('(prefers-color-scheme: light)').matches);document.documentElement.classList.toggle('light',light);if(editor)editor.updateOptions({theme:light?'vs':'vs-dark'})}
+function render(){const tree=$('fileTree');tree.innerHTML='';Object.keys(files).sort().forEach(n=>{const r=document.createElement('div');r.className=`tree-item ${n===activeFile?'active':''}`;r.innerHTML=`<span class="file-icon">${n.endsWith('.py')?'▣':'□'}</span><span class="item-name">${esc(n)}</span>`;r.onclick=()=>openFile(n);r.oncontextmenu=e=>context(e,n);tree.appendChild(r)});const tabs=$('tabs');tabs.innerHTML=`<div class="tab active"><span>${esc(activeFile)}</span><button class="close" aria-label="Close">×</button></div>`}
+function openFile(n){if(!files[n])return;if(editor)files[activeFile]=editor.getValue();activeFile=n;render();if(editor){editor.setValue(files[n]);editor.focus()}}
+function newFile(){let i=1,n='untitled.py';while(files[n])n=`untitled-${i++}.py`;files[n]='';activeFile=n;persist();render();if(editor)editor.setValue('');toast(`Created ${n}`)}
+function renameFile(n){const x=prompt('New file name',n);if(!x||x===n)return;if(files[x])return toast('That file already exists.','error');files[x]=files[n];delete files[n];if(activeFile===n)activeFile=x;persist();render();toast(`Renamed to ${x}`)}
+function deleteFile(n){if(Object.keys(files).length===1)return toast('Keep at least one project file.','error');if(!confirm(`Delete ${n}?`))return;delete files[n];if(activeFile===n)activeFile=Object.keys(files)[0];persist();render();if(editor)editor.setValue(files[activeFile]);toast(`Deleted ${n}`)}
+function context(e,n){e.preventDefault();const m=$('contextMenu');m.innerHTML='<button>Open</button><button>Rename</button><button>Delete</button>';m.hidden=false;m.style.left=`${Math.min(e.clientX,innerWidth-180)}px`;m.style.top=`${Math.min(e.clientY,innerHeight-120)}px`;m.children[0].onclick=()=>{m.hidden=true;openFile(n)};m.children[1].onclick=()=>{m.hidden=true;renameFile(n)};m.children[2].onclick=()=>{m.hidden=true;deleteFile(n)}}
+function output(t,k=''){const o=$('outputContent');o.innerHTML='';const p=document.createElement('pre');p.className=`output-line ${k}`;p.textContent=t;o.appendChild(p)}function append(t,k=''){const o=$('outputContent');if(o.querySelector('.output-empty'))o.innerHTML='';let p=o.querySelector('pre');if(!p){p=document.createElement('pre');o.appendChild(p)}p.className=`output-line ${k}`;p.textContent+=t;if(settings.scroll==='on')o.scrollTop=o.scrollHeight}function clearOutput(){output('Ready. Click Run to execute your Python program.');$('execMeta').textContent=''}
+function status(t,s){const e=$('runtimeStatus');e.className=`runtime-status ${s}`;e.innerHTML=`<i></i>${esc(t)}`}function save(){if(editor)files[activeFile]=editor.getValue();persist();toast('Project saved')}
+async function runCode(){if(!pyodide||running)return;if(editor)files[activeFile]=editor.getValue();const c=files[activeFile]||'',my=++token;running=true;$('runBtn').disabled=true;$('stopBtn').disabled=false;$('outputPanel').style.display='flex';output('Running…\n\n');status('Running','loading');const start=performance.now();try{pyodide.setStdout({batched:m=>{if(my===token)append(m+'\n')}});pyodide.setStderr({batched:m=>{if(my===token)append(m+'\n','error')}});const imports=[...c.matchAll(/^\s*(?:from|import)\s+([a-zA-Z0-9_]+)/gm)].map(m=>m[1]);const known=['numpy','pandas','matplotlib','scipy','sympy'];const packages=[...new Set(imports.filter(x=>known.includes(x)))];if(packages.length){append(`Preparing ${packages.join(', ')}…\n`);try{await pyodide.loadPackage(packages)}catch(e){append(`Package warning: ${e}\n`,'error')}}await pyodide.runPythonAsync(c);if(my===token){append('\n✓ Finished successfully','success');status('Ready','ready');$('execMeta').textContent=`${(performance.now()-start).toFixed(0)} ms`;toast('Execution completed')}}catch(e){if(my===token){append(`\n✕ ${e}`,'error');status('Execution error','error');$('execMeta').textContent=`${(performance.now()-start).toFixed(0)} ms`;toast('Execution failed','error')}}finally{pyodide.setStdout({});pyodide.setStderr({});if(my===token){running=false;$('runBtn').disabled=false;$('stopBtn').disabled=true}}}
+function stopCode(){if(!running)return;token++;running=false;$('runBtn').disabled=!pyodide;$('stopBtn').disabled=true;status('Stopped','ready');append('\n\n■ Stop requested. A WebAssembly operation already in progress may finish in the background.','error');toast('Stop requested')}
+function openModal(id){$(id).hidden=false}function closeModal(id){$(id).hidden=true}function exportProject(){if(editor)files[activeFile]=editor.getValue();persist();if(window.JSZip){const z=new JSZip();Object.entries(files).forEach(([n,c])=>z.file(n,c));z.generateAsync({type:'blob'}).then(b=>download(b,'python-web-project.zip'))}else download(new Blob([files[activeFile]]),activeFile);toast('Project exported')}
+function download(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}async function importProject(){const i=$('fileInput');i.click();i.onchange=async()=>{const f=i.files[0];if(!f)return;try{if(f.name.endsWith('.zip')&&window.JSZip){const z=await JSZip.loadAsync(f);for(const [n,x] of Object.entries(z.files))if(!x.dir&&!n.includes('..')&&!n.startsWith('/'))files[n]=await x.async('string')}else files[f.name]=await f.text();activeFile=f.name.endsWith('.py')?f.name:activeFile;persist();render();if(editor)editor.setValue(files[activeFile]||'');toast(`Imported ${f.name}`)}catch(e){toast('Import failed','error')}i.value=''}}
+function commands(){return[['Run Python','⌘↵',runCode],['Stop execution','',stopCode],['New file','',newFile],['Save project','⌘S',save],['Clear output','',clearOutput],['Toggle Explorer','',()=>$( 'explorer').classList.toggle('open')],['Examples','',()=>openModal('examplesModal')],['Settings','',()=>openModal('settingsModal')],['Download project','',exportProject]]}function renderCommands(q=''){const l=$('commandList');l.innerHTML='';commands().filter(x=>x[0].toLowerCase().includes(q.toLowerCase())).forEach(x=>{const r=document.createElement('div');r.className='command';r.innerHTML=`<span>${esc(x[0])}</span><span class="shortcut">${x[1]}</span>`;r.onclick=()=>{closeModal('commandPalette');x[2]()};l.appendChild(r)})}
+function openCommands(){renderCommands();openModal('commandPalette');setTimeout(()=>{$('commandSearch').value='';$('commandSearch').focus()},0)}
+function examplesUI(){const g=$('exampleGrid');g.innerHTML='';Object.values(examples).forEach(x=>{const b=document.createElement('button');b.className='example-card';b.innerHTML=`<strong>${esc(x.title)}</strong><span>${esc(x.description)}</span>`;b.onclick=()=>{files[activeFile]=x.code;if(editor)editor.setValue(x.code);dirty();closeModal('examplesModal');toast(`${x.title} loaded`)};g.appendChild(b)})}
+function settingsUI(){$('themeSelect').value=settings.theme;$('fontSize').value=settings.fontSize;$('wrapSelect').value=settings.wrap;$('minimapSelect').value=settings.minimap;$('autosaveSelect').value=settings.autosave;$('scrollSelect').value=settings.scroll}function updateSettings(){settings.theme=$('themeSelect').value;settings.fontSize=+$('fontSize').value;settings.wrap=$('wrapSelect').value;settings.minimap=$('minimapSelect').value;settings.autosave=$('autosaveSelect').value;settings.scroll=$('scrollSelect').value;localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));applyTheme();if(editor)editor.updateOptions({fontSize:settings.fontSize,wordWrap:settings.wrap==='on',minimap:{enabled:settings.minimap==='on'}});toast('Settings saved')}
+function initMonaco(){try{window.require.config({paths:{vs:'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs'}});window.require(['vs/editor/editor.main'],()=>{editor=monaco.editor.create($('editor'),{value:files[activeFile],language:'python',theme:document.documentElement.classList.contains('light')?'vs':'vs-dark',automaticLayout:true,fontSize:settings.fontSize,minimap:{enabled:settings.minimap==='on'},wordWrap:settings.wrap==='on',tabSize:4,insertSpaces:true,padding:{top:14,bottom:14},smoothScrolling:true,renderWhitespace:'selection',scrollBeyondLastLine:false});editor.onDidChangeModelContent(()=>{files[activeFile]=editor.getValue();dirty()});editor.onDidChangeCursorPosition(e=>$('cursorPos').textContent=`Ln ${e.position.lineNumber}, Col ${e.position.column}`);editor.addCommand(monaco.KeyMod.CtrlCmd|monaco.KeyCode.Enter,runCode);editor.addCommand(monaco.KeyMod.CtrlCmd|monaco.KeyCode.KeyS,save)})}catch(e){$('editorFallback').hidden=false;$('editor').hidden=true;const f=$('fallbackCode');f.value=files[activeFile];f.oninput=()=>{files[activeFile]=f.value;dirty()}}}
+async function initPython(){try{status('Starting Python…','loading');pyodide=await loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.27.7/full/'});const v=pyodide.runPython('import sys;sys.version.split()[0]');$('pythonVersion').textContent=`Python ${v}`;status(`Python ${v}`,'ready');output('Ready. Click Run to execute your Python program.');$('runBtn').disabled=false}catch(e){status('Runtime failed','error');output(`Python could not be started.\n\n${e}`,'error');toast('Python runtime failed to load','error')}}
+function bind(){ $('runBtn').onclick=runCode;$('stopBtn').onclick=stopCode;$('newFileBtn').onclick=newFile;$('importBtn').onclick=importProject;$('exportBtn').onclick=exportProject;$('clearOutputBtn').onclick=clearOutput;$('copyOutputBtn').onclick=()=>navigator.clipboard?.writeText($('outputContent').innerText).then(()=>toast('Output copied'));$('closeOutputBtn').onclick=()=>{$('outputPanel').style.display='none'};$('examplesBtn').onclick=()=>openModal('examplesModal');$('settingsBtn').onclick=()=>{settingsUI();openModal('settingsModal')};$('brandBtn').onclick=openCommands;$('themeBtn').onclick=()=>{settings.theme=settings.theme==='dark'?'light':'dark';localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));applyTheme();settingsUI()};$('projectMenuBtn').onclick=exportProject;$('newFolderBtn').onclick=()=>toast('Create files with paths such as data/example.txt.');document.querySelectorAll('.close-dialog').forEach(b=>b.onclick=()=>b.closest('.modal-backdrop').hidden=true);document.querySelectorAll('.panel-tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.panel-tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');if(t.dataset.panel!=='output')output('This panel is reserved for future diagnostics and terminal features.')});$('commandSearch').oninput=e=>renderCommands(e.target.value);$('commandSearch').onkeydown=e=>{if(e.key==='Enter')$('commandList .command')?.click();if(e.key==='Escape')closeModal('commandPalette')};['themeSelect','fontSize','wrapSelect','minimapSelect','autosaveSelect','scrollSelect'].forEach(id=>$(id).addEventListener('change',updateSettings));document.addEventListener('click',e=>{if(!e.target.closest('#contextMenu'))$('contextMenu').hidden=true});document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==='p'){e.preventDefault();openCommands()}else if(e.key==='Escape')document.querySelectorAll('.modal-backdrop').forEach(m=>m.hidden=true)});window.addEventListener('beforeunload',()=>{if(editor)files[activeFile]=editor.getValue();persist()})}
+loadState();render();examplesUI();settingsUI();bind();initMonaco();initPython();
