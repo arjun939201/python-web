@@ -1,41 +1,32 @@
-# Python Runner
+# Python Web IDE
 
-A lightweight browser-based Python playground powered by [Pyodide](https://pyodide.org/).
+A professional browser-based Python IDE powered by Pyodide.
 
 ## Features
 
-- Run Python 3 directly in the browser
-- No Python backend required
-- Standard output and error capture
-- Run/stop controls
-- Example programs
-- Keyboard shortcut: `Ctrl/Cmd + Enter`
-- Dark/light theme
-- Responsive layout
+- Monaco editor with Python syntax highlighting
+- Multi-file local projects
+- Local persistence and autosave
+- Import/export projects
+- Browser-based Python execution
+- Lazy loading of common Pyodide packages
+- Examples and command palette
+- Dark/light/system theme settings
+- Responsive IDE layout
+- GitHub Pages compatible static deployment
 
-## Run locally
+## Deployment
 
-Because Pyodide is loaded from a CDN, serve the project over HTTP rather than opening `index.html` directly:
+This version requires no Render backend. Enable **Settings → Pages → Deploy from branch → main / root** in GitHub. The application is static and Python runs in the browser.
 
-```bash
-python -m http.server 8080
-```
+## Security model
 
-Then open <http://localhost:8080>.
+User code is executed locally through Pyodide and is not sent to a remote Python execution server. Do not add server-side `exec()` or `eval()` for untrusted code. A future server execution provider should use isolated sandbox workers with strict CPU, memory, process, filesystem and network controls.
 
-## Deploy
+## Limitations
 
-This is a static site and can be deployed to GitHub Pages, Netlify, Vercel, Cloudflare Pages, or any static hosting service.
+Browser Python is not identical to a Linux server. Only packages supported by the Pyodide environment are available. The Stop control stops output collection; a WebAssembly operation already running on the main thread may finish in the background.
 
-### GitHub Pages
+## Future architecture
 
-1. Open **Settings → Pages** in this repository.
-2. Select **Deploy from a branch**.
-3. Select `main` and `/ (root)`.
-4. Save and wait for the deployment.
-
-## Architecture
-
-The browser downloads Pyodide (Python compiled to WebAssembly) and executes submitted code locally. User code is not sent to a custom execution server.
-
-This makes the MVP inexpensive and avoids exposing a server-side Python interpreter to arbitrary internet users. For server-side execution, add isolated workers with strong sandboxing, resource limits, and a queue before accepting untrusted public code.
+The frontend is intentionally structured so a future Render deployment can introduce an authenticated server execution provider without replacing the editor, project model or UI.
