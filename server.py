@@ -1,27 +1,22 @@
-"""Render-ready API foundation.
-
-This service intentionally does NOT execute arbitrary Python source on the Render
-web process. Running untrusted code directly with subprocess/exec on a normal web
-service is unsafe. A future sandbox worker should implement ExecutionProvider behind
-an isolated container/VM boundary with CPU, memory, process, filesystem and network
-limits.
-"""
+"""Python Web API + frontend server for Render."""
 from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
-app = FastAPI(
-    title="Python Web API",
-    version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-)
+BASE_DIR = Path(__file__).resolve().parent
+INDEX_FILE = BASE_DIR / "index.html"
+CSS_FILE = BASE_DIR / "style.css"
+JS_FILE = BASE_DIR / "app.js"
+
+app = FastAPI(title="Python Web IDE", version="1.1.0", docs_url="/api/docs", redoc_url="/api/redoc")
 
 frontend_origin = os.getenv("FRONTEND_ORIGIN", "*")
 origins = [x.strip() for x in frontend_origin.split(",") if x.strip()]
@@ -48,18 +43,38 @@ class ExecutionResponse(BaseModel):
     provider: str
 
 
+@app.get("/", include_in_schema=False)
+def home() -> FileResponse:
+    return FileResponse(INDEX_FILE, media_type="text/html")
+
+
+@app.get("/style.css", include_in_schema=False)
+def stylesheet() -> FileResponse:
+    return FileResponse(CSS_FILE, media_type="text/css")
+
+
+@app.get("/app.js", include_in_schema=False)
+def javascript() -> FileResponse:
+    return FileResponse(JS_FILE, media_type="application/javascript")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    return Response(status_code=204)
+
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "service": "python-web-api",
         "uptime_seconds": round(time.time() - started_at, 1),
+        "frontend": True,
     }
 
 
 @app.get("/api/config")
 def config() -> dict[str, Any]:
-    """Public capability discovery; no secrets are returned."""
     return {
         "server_execution": os.getenv("SANDBOX_EXECUTION_ENABLED", "false").lower() == "true",
         "browser_execution": True,
@@ -70,19 +85,9 @@ def config() -> dict[str, Any]:
 
 @app.post("/api/execute", response_model=ExecutionResponse)
 def execute(_: ExecutionRequest) -> ExecutionResponse:
-    """Explicitly refuse unsafe direct server execution.
-
-    This endpoint becomes active only after an isolated sandbox worker is wired in.
-    """
     if os.getenv("SANDBOX_EXECUTION_ENABLED", "false").lower() != "true":
         raise HTTPException(
             status_code=503,
-            detail=(
-                "Server execution is not enabled. Python currently runs in the browser. "
-                "Configure an isolated sandbox worker before enabling this endpoint."
-            ),
+            detail="Server execution is not enabled. Python currently runs in the browser.",
         )
-    raise HTTPException(
-        status_code=501,
-        detail="Sandbox worker integration is not installed on this service.",
-    )
+    raise HTTPException(status_code=501, detail="Sandbox worker integration is not installed on this service.")
