@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A browser-based Python code runner powered by Pyodide." />
+  <title>Python Runner</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">Py</div>
+      <div>
+        <h1>Python Runner</h1>
+        <span>Run Python directly in your browser</span>
+      </div>
+    </div>
+    <div class="status-wrap">
+      <span id="runtimeStatus" class="status loading"><span class="dot"></span>Loading Python…</span>
+      <button id="themeBtn" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">☾</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section class="toolbar">
+      <div class="toolbar-left">
+        <button id="runBtn" class="run-btn" disabled>▶ Run</button>
+        <button id="stopBtn" class="secondary-btn" disabled>■ Stop</button>
+        <button id="clearBtn" class="secondary-btn">Clear output</button>
+      </div>
+      <div class="toolbar-right">
+        <select id="exampleSelect" aria-label="Load example">
+          <option value="">Examples…</option>
+          <option value="hello">Hello world</option>
+          <option value="loops">Loops</option>
+          <option value="data">Data analysis</option>
+          <option value="error">Error demo</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="panel editor-panel">
+        <div class="panel-header">
+          <span>main.py</span>
+          <span id="charCount">0 chars</span>
+        </div>
+        <textarea id="code" spellcheck="false" aria-label="Python code">print("Hello from Python Runner!")
+
+for i in range(5):
+    print(f"Count: {i}")</textarea>
+        <div class="editor-footer">
+          <span>Python 3 · Pyodide</span>
+          <span>Ctrl/⌘ + Enter to run</span>
+        </div>
+      </div>
+
+      <div class="panel output-panel">
+        <div class="panel-header">
+          <span>Output</span>
+          <span id="executionTime"></span>
+        </div>
+        <pre id="output" class="output" aria-live="polite">Python runtime is loading…</pre>
+      </div>
+    </section>
+
+    <section class="info-grid">
+      <article>
+        <strong>🔒 Browser sandbox</strong>
+        <p>Your code runs locally in the browser through Pyodide. It is not sent to a server.</p>
+      </article>
+      <article>
+        <strong>⚡ No backend required</strong>
+        <p>Deploy this site to GitHub Pages, Cloudflare Pages, Netlify, or any static host.</p>
+      </article>
+      <article>
+        <strong>📦 Python packages</strong>
+        <p>Pyodide includes many scientific and data packages that can run in WebAssembly.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer>Python Runner · Open source browser Python playground</footer>
+
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
